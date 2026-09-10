@@ -1,0 +1,29 @@
+{
+  "name": "task-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node tests/status.test.mjs && node --experimental-loader ./tests/test-loader.mjs tests/recurring.test.mjs",
+    "android:sync": "vite build && npx cap sync android",
+    "android:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/browser": "^8.0.4",
+    "@capacitor/core": "^8.5.1",
+    "@supabase/supabase-js": "^2.45.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0",
+    "vite-plugin-pwa": "^0.20.5"
+  }
+}

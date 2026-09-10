@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Real browser test of src/lib/status.js</title></head>
+<body>
+<div id="results"></div>
+<script type="module">
+  // This imports the ACTUAL, UNMODIFIED /src/lib/status.js file served from
+  // disk — not a copy pasted into this harness. If that file has a syntax
+  // error or a runtime error on any real code path it exercises, this fails
+  // for real, in a real browser engine (Chromium via Playwright), not a
+  // simulation.
+  import { STATUS_META, isOverdue, primaryAction } from '/src/lib/status.js';
+
+  const results = [];
+  function test(name, fn) {
+    try { fn(); results.push({ name, pass: true }); }
+    catch (e) { results.push({ name, pass: false, error: e.message }); }
+  }
+  function assertEqual(a, b, msg) {
+    if (a !== b) throw new Error(msg || `expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
+  }
+
+  test('StatusBadge data: awaiting_approval has a label and color', () => {
+    assertEqual(typeof STATUS_META.awaiting_approval.label, 'string');
+    assertEqual(typeof STATUS_META.awaiting_approval.color, 'string');
+  });
+
+  test('isOverdue runs in a real browser Date engine and agrees with Node', () => {
+    assertEqual(isOverdue({ status: 'in_progress', deadline: '2020-01-01T00:00:00Z' }), true);
+  });
+
+  test('Self-approval regression guard holds in the real browser too', () => {
+    const task = { assigned_to: 'admin-uuid', created_by: 'user-uuid', status: 'awaiting_approval' };
+    assertEqual(primaryAction(task, 'admin-uuid', true), null);
+  });
+
+  const allPassed = results.every(r => r.pass);
+  document.getElementById('results').textContent = JSON.stringify({ allPassed, results });
+  window.__TEST_RESULTS__ = { allPassed, results };
+</script>
+</body>
+</html>
