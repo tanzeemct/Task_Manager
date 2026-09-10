@@ -71,12 +71,14 @@ Open the local URL it prints, sign in with the Admin account you just created.
 ## 4. Deploying for free (Cloudflare Pages)
 
 1. Push this project to a new GitHub repository (private is fine, free).
-2. In Cloudflare dashboard → **Pages → Create a project → Connect to Git** → select the repo.
+2. In Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git** → select the repo.
 3. Build settings: framework preset "Vite", build command `npm run build`, output directory `dist`.
 4. Add the two environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) in the Pages project settings.
 5. Deploy. You'll get a free `your-project.pages.dev` URL with HTTPS — that's your production link, shareable via WhatsApp exactly like any URL.
 
 Every future `git push` to the main branch redeploys automatically.
+
+**Note on Cloudflare's newer "Workers" onboarding:** as of late 2026, Cloudflare's dashboard sometimes creates new "Connect to Git" projects as a **Workers** project rather than classic Pages, which deploys via `npx wrangler deploy` and tries to auto-detect/configure the framework — and that auto-detection currently requires Vite 6+ (this project pins Vite 5), failing with "The version of Vite used in the project... cannot be automatically configured." `wrangler.jsonc` at the repo root fixes this by explicitly declaring a static-assets deploy (serving `dist/` with SPA fallback) so Wrangler skips that auto-detection entirely — no dashboard changes needed. `public/_redirects` (`/* /index.html 200`) is kept alongside it as a second safety net for classic Pages-style deploys, since without it a direct WhatsApp link straight to `/task/:id` would 404 on a first load.
 
 ## 5. How to add users
 
