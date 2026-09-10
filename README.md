@@ -9,6 +9,7 @@ A mobile-first task management PWA for a small team: bidirectional task assignme
 - Admin "invite" flow — Admin enters a name/email, the new person gets a magic-link sign-in email, and their profile is created automatically on first login (no service-role key ever touches the frontend)
 - Admin can also create a teammate's account **directly with a password** (Team → Add team member → "Create with password") — no email dependency; runs through the `admin-create-user` Edge Function so the service-role key stays server-side (see `supabase/functions/admin-create-user`)
 - "Forgot password?" on the Login screen — sends a Supabase reset-password email; clicking it brings the person back to a "set new password" screen (`src/pages/ResetPassword.jsx`), no Admin involvement needed. Requires one Supabase dashboard setting — see Section 3A step 7.
+- Team screen shows each person's sign-in email, and Admin can **set a new password** for anyone directly ("Reset password" per row) — via the `admin-reset-password` Edge Function. Note what this deliberately does NOT do: show anyone's *current* password — that's not a missing feature, it's impossible by design (Supabase only ever stores a one-way hash, never a reversible password), and storing plaintext passwords anywhere to work around that would be a real security hole, not a shortcut.
 - Optional Yes / No / Explanation checklist response on any task ("Checklist response" toggle in Create Task) — for quick confirmations that don't need the full accept/start/complete/approve lifecycle
 - "Send via WhatsApp" button (Task Detail + right after creating a task) — pre-fills the task name, deadline, and link in WhatsApp; works both on the web and inside the Android app (via `@capacitor/browser`)
 - Native Android app wrapper (Capacitor, see Section 12a) — the same React app bundled into an installable `.apk`
@@ -42,10 +43,14 @@ I built and organized all of this inside a sandboxed environment with no interne
 ### A. Create your free Supabase project
 1. Go to supabase.com → New project (free tier, no card required).
 2. Once created, open **SQL Editor** → paste the entire contents of `database/schema.sql` → Run.
-3. Then paste and run `database/migration_002.sql`, then `migration_003.sql`, then `migration_004.sql`, then `migration_005.sql`, in that order, in the same SQL Editor. (002 adds the invite flow and extension-request columns; 003 closes real security/lifecycle gaps found in a full audit — deactivated-user access, invalid status transitions, missing storage policies, duplicate recurring occurrences, and notification accuracy; 004 adds attachment deletion; 005 adds the Yes/No/Explanation checklist response columns.)
+3. Then paste and run, in order: `migration_002.sql`, `migration_003.sql`, `migration_004.sql`, `migration_005.sql`, `migration_006.sql`. (002 adds the invite flow and extension-request columns; 003 closes real security/lifecycle gaps found in a full audit — deactivated-user access, invalid status transitions, missing storage policies, duplicate recurring occurrences, and notification accuracy; 004 adds attachment deletion; 005 adds the Yes/No/Explanation checklist response columns; 006 adds the `email` column the Team screen displays.)
 4. Go to **Storage** → confirm a `task-attachments` bucket was created (the schema script creates it) → add storage policies restricting access to task participants (mirror the `is_admin()` logic used for tables — Supabase's dashboard has a policy template you can adapt).
 5. Go to **Authentication → Providers** → confirm Email is enabled and that "Confirm email" / magic link sign-in is on, since the invite flow depends on it.
-6. Go to **Edge Functions** → **Create a function** → name it exactly `admin-create-user` → paste the contents of `supabase/functions/admin-create-user/index.ts` → Deploy. (Powers "Create with password" on the Team screen — see Section 5. No secrets to configure: `SUPABASE_URL`/`SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY` are injected automatically for every Edge Function. If you get "Failed to send a request to the Edge Function" in the app, this step wasn't done, or the function name doesn't match exactly.)
+6. Go to **Edge Functions** and create two functions (same steps for each: **Create a function** → paste the file's contents → Deploy):
+   - `admin-create-user` ← `supabase/functions/admin-create-user/index.ts` (powers "Create with password" on the Team screen)
+   - `admin-reset-password` ← `supabase/functions/admin-reset-password/index.ts` (powers "Reset password" per person on the Team screen)
+
+   Names must match exactly. No secrets to configure for either: `SUPABASE_URL`/`SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY` are injected automatically. If you get "Failed to send a request to the Edge Function" in the app, the matching function wasn't deployed, or its name doesn't match exactly.
 7. Go to **Authentication → URL Configuration** → add your app's URL (e.g. `http://localhost:5173` while developing, and your `https://…pages.dev` URL after deploying — Section 4) to **Redirect URLs**. Powers "Forgot password?" on the Login screen (Section 1) — without this, the reset email's link won't come back to the right place.
 8. Go to **Project Settings → API** → copy your Project URL and `anon` public key.
 
@@ -85,6 +90,8 @@ Every future `git push` to the main branch redeploys automatically.
 Admin → **Team** tab → **+ Add team member**, then pick one of two ways:
 - **Create with password** (default tab) — enter their name, email, and a password you choose, pick a role, **Create account**. They can sign in immediately with that email/password; share it with them yourself however's convenient (WhatsApp, in person). Requires the `admin-create-user` Edge Function from Section 3A step 6.
 - **Send email invite** — enter their name, email, role, **Send invite**. They receive a magic-link sign-in email; clicking it and signing in for the first time automatically creates their profile with the name/role you set. No password to distribute, but depends on the invite email actually arriving.
+
+Each row on the Team screen also shows that person's sign-in email, and a **Reset password** button — Admin can set a brand new password for anyone at any time (requires `admin-reset-password`, Section 3A step 6). This intentionally cannot show anyone's *existing* password: Supabase never stores one in a form that could be shown back, by design — only setting a fresh one is possible, which is also the more secure thing to actually want here.
 
 ## 5a. Checklist response (Yes / No / Explanation)
 
